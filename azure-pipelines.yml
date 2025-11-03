@@ -1,0 +1,35 @@
+trigger:
+- main   # Runs pipeline automatically on main branch changes
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '8.0.x'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+- script: dotnet restore
+  displayName: 'Restore NuGet Packages'
+
+- script: dotnet build --configuration Release
+  displayName: 'Build Project'
+
+- script: dotnet test --collect:"XPlat Code Coverage" --logger "trx"
+  displayName: 'Run Tests'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'VSTest'
+    testResultsFiles: '**/*.trx'
+    failTaskOnFailedTests: true
+
+- script: dotnet publish --configuration Release --output $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish Artifacts'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: $(Build.ArtifactStagingDirectory)
+    artifactName: 'drop'
